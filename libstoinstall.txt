@@ -1,0 +1,3 @@
+pip install discord
+pip install aiosqlite
+pip install python-dotenv
