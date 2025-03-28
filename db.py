@@ -1,11 +1,13 @@
-import mysql.connector
-from mysql.connector import Error
+from discord.ext import commands
+from aiosqlite import Connection, Error
 
 
-def run_db_query(connection: mysql.connector, query: str):
-    cursor = connection.cursor(prepare=True)
+async def run_db_query(dbc: Connection, query: str):
+    cursor = await dbc.cursor()
     try:
-        cursor.execute(query)
+        await cursor.execute(query)
+        await dbc.commit()
         print(f"Query: '{query}' executed successfully.")
     except Error as error:
         print(f"Error: '{error}'")
+
