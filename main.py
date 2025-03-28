@@ -3,7 +3,7 @@ import aiosqlite
 from aiosqlite import Connection
 import discord
 import os
-from discord import Message
+from discord import Message, Interaction
 from discord.ext import commands
 from dotenv import load_dotenv
 
@@ -22,18 +22,20 @@ dbc: Connection
 # ------------- Commands -------------
 
 @bot.tree.command(name="addleague", description="Fetch a league from GGG API and add it to the database")
-async def addleague(interaction: discord.Interaction, league_name: str):
+async def addleague(interaction: Interaction, league_name: str):
     await interaction.response.send_message(league_name)
 
 
 @bot.tree.command(name="dbquery", description='You can run any database query with this')
-async def dbquery(interaction: discord.Interaction, query: str):
-    await run_db_query(dbc, query)
-    await interaction.response.send_message('Query executed')
+async def dbquery(interaction: Interaction, query: str):
+    if await run_db_query(dbc, query):
+        await interaction.response.send_message('Query executed')
+    else:
+        await interaction.response.send_message('Query failed to execute')
 
 
 @bot.tree.command(name='requestrank', description='Get your veteran roles with this!')
-async def requestrank(interaction: discord.Interaction):
+async def requestrank(interaction: Interaction):
     await interaction.response.send_message(f'Added rank to {interaction.user.mention}')
 
 
