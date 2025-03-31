@@ -1,0 +1,30 @@
+CREATE TABLE IF NOT EXISTS character(
+    name TEXT(256) PRIMARY KEY UNIQUE,
+    rank INTEGER UNIQUE,
+    class TEXT(256),
+    level INTEGER,
+    experience INTEGER,
+    delve_depth INTEGER,
+    owner TEXT(256),
+    league TEXT(256),
+    FOREIGN KEY(owner) REFERENCES account(name),
+    FOREIGN KEY(league) REFERENCES league(name)
+);
+
+CREATE TABLE IF NOT EXISTS league(
+    name TEXT(256) PRIMARY KEY UNIQUE,
+    start_date TEXT(256),
+    end_date TEXT(256)
+);
+
+CREATE TABLE IF NOT EXISTS account(
+    username TEXT(256) PRIMARY KEY,
+    discord_id INTEGER UNIQUE,
+    veteran_role INTEGER,
+    FOREIGN KEY(veteran_role) REFERENCES veteran_role(discord_role_id)
+);
+
+CREATE TABLE IF NOT EXISTS veteran_role(
+    name TEXT(256),
+    discord_role_id INTEGER PRIMARY KEY UNIQUE
+);

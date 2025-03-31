@@ -1,3 +1,8 @@
+#########################################
+# Author: Veginite
+# Module status: UNFINISHED
+#########################################
+
 from aiosqlite import Connection, Error
 
 
