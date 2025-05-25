@@ -29,10 +29,10 @@
 
 ## License and distribution
 
-Forking and derived work may be published and distributed as long as there's clear credit to me, where due
+Forking and derived work may be published and distributed as long as there's clear credit to me, where due.
 
 ## Credits & Special Thanks:
 
 - <b>Yeknom</b> for assisting with hosting, troubleshooting and hotfixes
-- <b>PeskyTheBear</b> for helping me understand request modules
+- <b>PeskyTheBear</b> for helping me understand request modules and a bit of SQL
 - <b>Lily</b> for sacrificing your IP address during the launch of the original project which scraped html
