@@ -43,7 +43,7 @@ async def add_league(interaction: Interaction, league_name: str):
 
 @bot.tree.command(name="dbquery", description='You can run any database query with this')
 async def db_query(interaction: Interaction, query: str):
-    if await run_db_query(dbc, query):
+    if await run_db_query(dbc, query, {}):
         await interaction.channel.send('Query executed')
     else:
         await interaction.channel.send('Query failed to execute')
