@@ -35,28 +35,29 @@ session: aiohttp.ClientSession
 
 @bot.tree.command(name="addleague", description="Fetch league data from GGG API and merge it to the database")
 async def add_league(interaction: Interaction, league_name: str):
-
+    await interaction.response.send_message(f'Processing league {league_name}, please standby...')
     await process_league(league_name, dbc, session)
+    await bot.get_channel(interaction.channel_id).send('Processing done!')
 
-    await interaction.channel.send('processed league')
+
 
 
 @bot.tree.command(name="dbquery", description='You can run any database query with this')
 async def db_query(interaction: Interaction, query: str):
     if await run_db_query(dbc, query, {}):
-        await interaction.channel.send('Query executed')
+        await interaction.response.send_message('Query executed')
     else:
-        await interaction.channel.send('Query failed to execute')
+        await interaction.response.send_message('Query failed to execute')
 
 
 @bot.tree.command(name='requestrank', description='Get your veteran roles with this!')
 async def request_rank(interaction: Interaction):
-    await interaction.channel.send(f'Added rank to {interaction.user.mention}')
+    await interaction.response.send_message(f'Added rank to {interaction.user.mention}')
 
 
 @bot.tree.command(name='testcode', description='Code playground')
 async def test_code(interaction: Interaction):
-    await interaction.channel.send('Testing code')
+    await interaction.response.send_message('Testing code')
     return
 
 
@@ -81,7 +82,7 @@ async def on_ready() -> None:
     except Exception as e:
         print(e)
 
-    # instantiate a client session for HTTP requests from GGG's API
+    # instantiate a client session for HTTP requests from the GGG API
 
     header = {
         'Authorization': f'Bearer {GGG_ACCESS_TOKEN}',
@@ -94,7 +95,7 @@ async def on_ready() -> None:
 
 @bot.event
 async def on_message(message: Message) -> None:
-    # The bot should not react to message it posts itself or there will be an infinite message loop
+    # The bot should not react to the message itself posts or there will be an infinite message loop
     if message.author == bot.user:
         return
 
