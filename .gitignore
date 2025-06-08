@@ -1,3 +1,5 @@
 /.env
 /PrivateLeagueData.db
 /PrivateLeagueData.db-journal
+/league_example.json
+/conflux_leagues.txt
