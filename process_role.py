@@ -14,7 +14,7 @@ async def process_role(dbc : Connection, user: discord.User, poe_acc_name: str) 
     unique_years_played = await fetch_unique_years_played(dbc, poe_acc_name)
 
     if unique_years_played is None: # Query error
-        get_generic_query_error_msg()
+        return get_generic_query_error_msg()
     elif not unique_years_played: # Empty list
         return (f'Process aborted: Query returned no Conflux records for PoE account {poe_acc_name}.'
                 f'If you are new to Conflux and have recently joined your first league, please await a database update.')
@@ -69,6 +69,7 @@ async def fetch_veteran_roles(dbc: Connection):
 async def fetch_eligible_role(dbc: Connection, unique_years_played: int):
     query = "SELECT name, discord_role_id FROM veteran_role WHERE required_years = :unique_years_played;"
     return await run_db_query(dbc, query, {'unique_years_played': unique_years_played})
+
 
 async def purge_prior_roles(user: discord.User, user_veteran_roles: list):
     for role in user_veteran_roles:
