@@ -1,21 +1,31 @@
-CREATE TABLE IF NOT EXISTS veteran_role(
-    name TEXT(64),
-    discord_role_id INTEGER PRIMARY KEY
-);
-
 CREATE TABLE IF NOT EXISTS league(
     id INTEGER PRIMARY KEY,
     name TEXT(128) UNIQUE,
-    start_date TEXT(128),
-    end_date TEXT(128)
+    start_at TEXT(64),
+    end_at TEXT(64),
+    awards_veteran_roles INTEGER DEFAULT TRUE
 );
 
-CREATE TABLE IF NOT EXISTS account(
+CREATE TABLE IF NOT EXISTS poe_account(
     id INTEGER PRIMARY KEY,
     username TEXT(64) UNIQUE,
+    discord_id INTEGER UNIQUE,
+    FOREIGN KEY(discord_id) REFERENCES discord_account(id)
+);
+
+CREATE TABLE IF NOT EXISTS discord_account(
+    id INTEGER PRIMARY KEY,
     discord_id INTEGER,
+    username TEXT(64) UNIQUE,
     veteran_role INTEGER,
-    FOREIGN KEY(veteran_role) REFERENCES veteran_role(discord_role_id)
+    FOREIGN KEY(veteran_role) REFERENCES veteran_role(id)
+);
+
+CREATE TABLE IF NOT EXISTS veteran_role(
+    id INTEGER PRIMARY KEY,
+    name TEXT(64),
+    required_years INTEGER,
+    discord_role_id INTEGER UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS character(
@@ -28,6 +38,6 @@ CREATE TABLE IF NOT EXISTS character(
     delve_depth INTEGER,
     owner INTEGER,
     league INTEGER,
-    FOREIGN KEY(owner) REFERENCES account(id),
+    FOREIGN KEY(owner) REFERENCES poe_account(id),
     FOREIGN KEY(league) REFERENCES league(id)
 );
