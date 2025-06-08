@@ -1,6 +1,6 @@
 #########################################
 # Author: Veginite
-# Module status: UNFINISHED
+# Module status: FINISHED
 #########################################
 
 from aiosqlite import Connection, Error
@@ -33,3 +33,6 @@ async def run_many_db_queries(dbc: Connection, query: str, params: list):
     rows = await cursor.fetchall()
     await cursor.close()
     return rows
+
+def get_generic_query_error_msg() -> str:
+    return "Process aborted: Query failure. Ping Vegi."
