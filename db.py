@@ -8,6 +8,8 @@
 
 from aiosqlite import Connection, Error
 
+from utils import get_host_mention
+
 
 async def run_db_query(dbc: Connection, query: str, param: dict):
     cursor = await dbc.cursor()
@@ -40,4 +42,4 @@ async def run_many_db_queries(dbc: Connection, query: str, params: list):
 
 
 def get_generic_query_error_msg() -> str:
-    return "Process aborted: Query failure. Ping Vegi."
+    return "Process aborted: Query failed. " + get_host_mention()
