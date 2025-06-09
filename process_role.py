@@ -8,6 +8,7 @@ from aiosqlite import Connection
 import discord
 
 from db import run_db_query, run_many_db_queries, get_generic_query_error_msg
+from utils import get_host_mention
 
 
 async def process_role(dbc : Connection, user: discord.User, poe_acc_name: str) -> str:
@@ -40,7 +41,7 @@ async def update_veteran_role(dbc: Connection, user: discord.User, unique_years_
     if vet_roles is None: # Query error
         return get_generic_query_error_msg()
     elif not vet_roles: # Empty list
-        return 'Process aborted: Query returned no veteran roles. Ping Vegi.'
+        return 'Process aborted: Query returned no veteran roles. ' + get_host_mention()
 
     vet_roles = [row[0] for row in vet_roles] # Fetch roles and construct a list of ids
     user_vet_roles = [role.id for role in user.roles if role.id in vet_roles] # the vet roles the user currently has
@@ -49,7 +50,7 @@ async def update_veteran_role(dbc: Connection, user: discord.User, unique_years_
     if eligible_role is None: # Query error
         return get_generic_query_error_msg()
     elif not eligible_role:  # Empty list
-        return 'Process aborted: Query returned no eligible roles. Ping Vegi.'
+        return 'Process aborted: Query returned no eligible roles. ' + get_host_mention()
     else:
         eligible_role = eligible_role[0][1]  # id of the Tuple
 

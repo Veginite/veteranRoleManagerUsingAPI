@@ -11,6 +11,7 @@ from aiosqlite import Connection
 import discord
 
 from db import run_db_query, get_generic_query_error_msg
+from utils import get_host_mention
 
 async def link_account(dbc: Connection, user: discord.User, poe_acc_name: str):
     discord_id = await insert_discord_account(dbc, user)
@@ -34,7 +35,7 @@ async def link_account(dbc: Connection, user: discord.User, poe_acc_name: str):
         if discord_account_deletion is None:
             return get_generic_query_error_msg()
         elif not discord_account_deletion:
-            return "Failed to delete redundant Discord account. Ping Vegi."
+            return "Failed to delete redundant Discord account. " + get_host_mention()
 
     if discord_link is None: # Query failed
         return get_generic_query_error_msg()
@@ -75,14 +76,14 @@ async def unlink_account(dbc: Connection, user: discord.User):
     if poe_acc_name is None:
         return get_generic_query_error_msg()
     elif not poe_acc_name:
-        return "Process aborted: Something went wrong with severing the foreign key. Ping Vegi."
+        return "Process aborted: Something went wrong with severing the foreign key. " + get_host_mention()
     poe_acc_name = poe_acc_name[0][0]
 
     discord_account_deletion = await delete_discord_account(dbc, user.id)
     if discord_account_deletion is None:
         return get_generic_query_error_msg()
     elif not discord_account_deletion:
-        return "Failed to delete redundant Discord account. Ping Vegi."
+        return "Failed to delete redundant Discord account. " + get_host_mention()
 
     return f"Successfully unlinked {poe_acc_name}."
 
