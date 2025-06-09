@@ -8,7 +8,7 @@ import aiohttp
 import json
 
 from db import run_db_query, run_many_db_queries
-from utils import get_host_mention
+from utils import get_host_mention, query_was_unsuccessful
 
 
 async def process_league(league_name: str, dbc: Connection, session) -> str:
@@ -28,9 +28,9 @@ async def process_league(league_name: str, dbc: Connection, session) -> str:
         return "Unable to fetch league data. Check console for HTTP status code. " + get_host_mention()
 
     # If the league is brand new, add it to the database
-    league_entry = await insert_league_entry(dbc, league_data["league"])
-    if league_entry is None:
-        return league_entry["query_error"]
+    query_error = await insert_league_entry(dbc, league_data["league"])
+    if query_was_unsuccessful(query_error):
+        return query_error
 
     process_ladder_entries(league_data["ladder"]["entries"],
                            account_entries,
@@ -59,13 +59,13 @@ async def process_league(league_name: str, dbc: Connection, session) -> str:
 
     # Insert the full list of PoE accounts for the given league
     query_error = await insert_account_entries(dbc, account_entries)
-    if len(query_error) > 0:
+    if query_was_unsuccessful(query_error):
         return query_error
 
     # Insert the full list of PoE characters for the given league
-    entry_success = await insert_character_entries(dbc, character_entries)
-    if entry_success is None:
-        return entry_success["query_error"]
+    query_error = await insert_character_entries(dbc, character_entries)
+    if query_was_unsuccessful(query_error):
+        return query_error
 
     return f"Successfully processed {league_name} with {total_entries} total entries."
 
@@ -106,7 +106,7 @@ def process_ladder_entries(ladder_entries, account_entries, character_entries, l
 
 async def illegitimize_league(dbc: Connection, league_name: str) -> str:
     query_error = await update_league_no_roles(dbc, league_name)
-    if len(query_error) > 0:
+    if query_was_unsuccessful(query_error):
         return query_error
 
     return f"{league_name} is now ineligible for vet roles."
@@ -131,7 +131,6 @@ async def insert_character_entries(dbc:Connection, character_entries: list) -> s
     subquery_owner = f'SELECT id FROM poe_account WHERE username = :owner'  # FK surrogate key
     subquery_league = f'SELECT id FROM league WHERE name = :league_name'  # FK surrogate key
 
-    # sqlite3 UPSERT implementation
     query = (f'INSERT INTO character (id, name, rank, class, level, experience, delve_depth, owner, league) '
              f'VALUES(:id, :name, :rank, :class, :level, :experience, :delve_depth, '
              f'({subquery_owner}), ({subquery_league}))'
@@ -140,10 +139,10 @@ async def insert_character_entries(dbc:Connection, character_entries: list) -> s
              f'name=:name, rank=:rank, class=:class, level=:level, experience=:experience, delve_depth=:delve_depth, '
              f'WHERE id=:id;')
 
-    insertion = await run_many_db_queries(dbc, query, character_entries)
+    upsert = await run_many_db_queries(dbc, query, character_entries)
 
     query_error = ""
-    if insertion is None:
+    if upsert is None:
         query_error = get_generic_query_error_msg() + insert_character_entries.__name__
 
     return query_error
