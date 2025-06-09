@@ -1,20 +1,21 @@
 #########################################
 # Author: Veginite
-# Module status: UNFINISHED
+# Module status: FINISHED
 #########################################
 
 from aiosqlite import Connection
 import aiohttp
 import json
-import time
 
 from db import run_db_query, run_many_db_queries
+from utils import get_host_mention
 
 
-async def process_league(league_name: str, dbc: Connection, session) -> bool:
-    poe_account_entries: list = []
+async def process_league(league_name: str, dbc: Connection, session) -> str:
+    account_entries: list = []
     character_entries: list = []
-    # FOR TESTING WITH LOCALLY SOURCED DATA
+
+    # FOR TESTING WITH LOCALLY SOURCED JSON DATA
     # with open('league_example.json', encoding='utf-8') as f:
         # league_data = json.load(f)
 
@@ -23,13 +24,18 @@ async def process_league(league_name: str, dbc: Connection, session) -> bool:
     # Grinding Gear Games has a hard limit of 500 entries per API request.
     league_data = await fetch_league_data(session, league_name, 500, 0)
 
-    # If the league is brand new, add it to the database
-    await process_league_entry(dbc, league_data["league"])
+    if league_data is None:
+        return "Unable to fetch league data. Check console for HTTP status code. " + get_host_mention()
 
-    await process_ladder_entries(league_data["ladder"]["entries"],
-                                 poe_account_entries,
-                                 character_entries,
-                                 league_data["league"]["name"])
+    # If the league is brand new, add it to the database
+    league_entry = await insert_league_entry(dbc, league_data["league"])
+    if league_entry is None:
+        return league_entry["query_error"]
+
+    process_ladder_entries(league_data["ladder"]["entries"],
+                           account_entries,
+                           character_entries,
+                           league_data["league"]["name"])
 
     total_entries = int(league_data["ladder"]["total"])
     remaining_entries = total_entries - len(league_data["ladder"]["entries"])
@@ -39,43 +45,32 @@ async def process_league(league_name: str, dbc: Connection, session) -> bool:
     while remaining_entries > 0:
         time.sleep(0.05) # There is no guideline for rate-limiting, so I'll just go with 50 ms to be safe
         offset = total_entries - remaining_entries
-        league_data = await fetch_league_data(session, league_name, min(remaining_entries, 500), offset)
 
-        await process_ladder_entries(league_data["ladder"]["entries"],
-                                     poe_account_entries,
-                                     character_entries,
-                                     league_data["league"]["name"])
+        league_data = await fetch_league_data(session, league_name, min(remaining_entries, 500), offset)
+        if league_data is None:
+            return "Unable to fetch league data. Check console for HTTP status code. " + get_host_mention()
+
+        process_ladder_entries(league_data["ladder"]["entries"],
+                               account_entries,
+                               character_entries,
+                               league_data["league"]["name"])
 
         remaining_entries -= len(league_data["ladder"]["entries"])
 
-    # ------------------------
+    # Insert the full list of PoE accounts for the given league
+    query_error = await insert_account_entries(dbc, account_entries)
+    if len(query_error) > 0:
+        return query_error
 
-    query = f'INSERT INTO poe_account (username) VALUES (:username) ON CONFLICT(username) DO NOTHING;'
+    # Insert the full list of PoE characters for the given league
+    entry_success = await insert_character_entries(dbc, character_entries)
+    if entry_success is None:
+        return entry_success["query_error"]
 
-    await run_many_db_queries(dbc, query, poe_account_entries)
-
-    # ------------------------
-
-    subquery_owner = f'SELECT id FROM poe_account WHERE username = :owner'  # FK surrogate key
-    subquery_league = f'SELECT id FROM league WHERE name = :league_name'  # FK surrogate key
-
-    # sqlite3 UPSERT implementation
-    query = (f'INSERT INTO character (id, name, rank, class, level, experience, delve_depth, owner, league) '
-             f'VALUES(:id, :name, :rank, :class, :level, :experience, :delve_depth, '
-             f'({subquery_owner}), ({subquery_league})) '
-             f'ON CONFLICT(id) DO '
-             f'UPDATE SET '
-             f'name=:name, rank=:rank, class=:class, level=:level, experience=:experience, delve_depth=:delve_depth, '
-             f'WHERE id=:id;')
-
-    await run_many_db_queries(dbc, query, character_entries)
-
-    # ------------------------
-
-    return True
+    return f"Successfully processed {league_name} with {total_entries} total entries."
 
 
-async def fetch_league_data(session: aiohttp.ClientSession, league_name: str, limit: int, offset: int):
+async def fetch_league_data(session: aiohttp.ClientSession, league_name: str, limit: int, offset: int) -> dict | None:
     url = f'https://api.pathofexile.com/league/{league_name}/ladder?limit={limit}&offset={offset}'
 
     async with session.get(url) as response:
@@ -90,12 +85,12 @@ async def fetch_league_data(session: aiohttp.ClientSession, league_name: str, li
             return None
 
 
-async def process_ladder_entries(ladder_entries, poe_account_entries, character_entries, league_name):
+def process_ladder_entries(ladder_entries, account_entries, character_entries, league_name) -> None:
     for entry in ladder_entries:
         character = entry["character"]
 
         # New accounts need to be added before the characters because the foreign key is not allowed to be null
-        poe_account_entries.append({'username': entry["account"]["name"]})
+        account_entries.append({'username': entry["account"]["name"]})
 
         character_entries.append({
             'id': character["id"],
@@ -109,7 +104,52 @@ async def process_ladder_entries(ladder_entries, poe_account_entries, character_
             'league_name': league_name})
 
 
-async def process_league_entry(dbc, league_data):
+async def illegitimize_league(dbc: Connection, league_name: str) -> str:
+    query_error = await update_league_no_roles(dbc, league_name)
+    if len(query_error) > 0:
+        return query_error
+
+    return f"{league_name} is now ineligible for vet roles."
+
+
+# ------------------------------------ SQL QUERIES ------------------------------------
+
+
+async def insert_account_entries(dbc: Connection, account_entries: list) -> str:
+    query = f'INSERT INTO poe_account (username) VALUES (:username) ON CONFLICT(username) DO NOTHING;'
+
+    insertion = await run_many_db_queries(dbc, query, account_entries)
+
+    query_error = ""
+    if insertion is None:
+        query_error = get_generic_query_error_msg() + insert_account_entries.__name__
+
+    return query_error
+
+
+async def insert_character_entries(dbc:Connection, character_entries: list) -> str:
+    subquery_owner = f'SELECT id FROM poe_account WHERE username = :owner'  # FK surrogate key
+    subquery_league = f'SELECT id FROM league WHERE name = :league_name'  # FK surrogate key
+
+    # sqlite3 UPSERT implementation
+    query = (f'INSERT INTO character (id, name, rank, class, level, experience, delve_depth, owner, league) '
+             f'VALUES(:id, :name, :rank, :class, :level, :experience, :delve_depth, '
+             f'({subquery_owner}), ({subquery_league}))'
+             f'ON CONFLICT(id) DO '
+             f'UPDATE SET '
+             f'name=:name, rank=:rank, class=:class, level=:level, experience=:experience, delve_depth=:delve_depth, '
+             f'WHERE id=:id;')
+
+    insertion = await run_many_db_queries(dbc, query, character_entries)
+
+    query_error = ""
+    if insertion is None:
+        query_error = get_generic_query_error_msg() + insert_character_entries.__name__
+
+    return query_error
+
+
+async def insert_league_entry(dbc, league_data) -> str:
     league_entry = {
         'league_name': league_data["name"],
         'start_at': league_data["startAt"],
@@ -119,9 +159,21 @@ async def process_league_entry(dbc, league_data):
              f'VALUES (:league_name, :start_at, :end_at) '
              f'ON CONFLICT(name) DO UPDATE SET start_at=:start_at, end_at=:end_at;')
 
-    await run_db_query(dbc, query, league_entry)
+    insertion = await run_db_query(dbc, query, league_entry)
+
+    query_error = ""
+    if insertion is None:
+        query_error = get_generic_query_error_msg() + insert_league_entry.__name__
+
+    return query_error
 
 
-async def illegitimize_league(dbc: Connection, league_name: str):
+async def update_league_no_roles(dbc: Connection, league_name: str) -> str:
     query = "UPDATE league SET awards_veteran_roles = FALSE WHERE name = :league_name;"
-    await run_db_query(dbc, query, {'league_name': league_name})
+    update = await run_db_query(dbc, query, {'league_name': league_name})
+
+    query_error = ""
+    if update is None:
+        query_error = get_generic_query_error_msg() + update_league_no_roles.__name__
+
+    return query_error
