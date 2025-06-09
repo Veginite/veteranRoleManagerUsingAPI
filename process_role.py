@@ -1,7 +1,7 @@
 #########################################
 # Author: Veginite
 # Module status: SEMI-FINISHED
-# To do: Implement linking module and require a Discord-to-PoE link to claim roles.
+# To do: Use account_linking to verify ownership
 #########################################
 
 from aiosqlite import Connection
@@ -18,7 +18,10 @@ async def process_role(dbc : Connection, user: discord.User, poe_acc_name: str) 
     elif not unique_years_played: # Empty list
         return (f'Process aborted: Query returned no Conflux records for PoE account {poe_acc_name}.'
                 f'If you are new to Conflux and have recently joined your first league, please await a database update.')
-    return await update_veteran_role(dbc, user, unique_years_played[0][0])
+    else:
+        unique_years_played = unique_years_played[0][0]
+
+    return await update_veteran_role(dbc, user, unique_years_played)
 
 
 async def fetch_unique_years_played(dbc: Connection, poe_acc_name: str):
@@ -47,8 +50,9 @@ async def update_veteran_role(dbc: Connection, user: discord.User, unique_years_
         return get_generic_query_error_msg()
     elif not eligible_role:  # Empty list
         return 'Process aborted: Query returned no eligible roles. Ping Vegi.'
+    else:
+        eligible_role = eligible_role[0][1]  # id of the Tuple
 
-    eligible_role = eligible_role[0][1]  # id of the Tuple
 
     if eligible_role in user_vet_roles:
         return 'Skipped role processing: User already has the maximum eligible role.'
