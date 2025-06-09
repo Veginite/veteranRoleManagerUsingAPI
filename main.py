@@ -39,8 +39,8 @@ session: aiohttp.ClientSession
 @bot.tree.command(name="admin-illegitimize-league", description="Make a league not count towards vet roles")
 async def admin_illegitimize_league(interaction: Interaction, league_name: str):
     await interaction.response.send_message(f'Making {league_name} ineligible for vet roles...')
-    await illegitimize_league(dbc, league_name)
-    await bot.get_channel(interaction.channel_id).send(f'{league_name} is now ineligible for vet roles.')
+    response: str = await illegitimize_league(dbc, league_name)
+    await bot.get_channel(interaction.channel_id).send(response)
 
 
 @bot.tree.command(name="admin-process-league", description="Fetch league data from GGG API and merge it to the database")
@@ -60,24 +60,24 @@ async def admin_test_code(interaction: Interaction):
 @bot.tree.command(name="link-account", description="Establish a link between your Discord and PoE account")
 async def user_link_account(interaction: Interaction, poe_acc_name: str):
     await interaction.response.send_message(f'Attempting to link you to {poe_acc_name}...')
-    discord_user = interaction.user
-    response = await link_account(dbc, discord_user, poe_acc_name)
+    discord_user: discord.User = interaction.user
+    response: str = await link_account(dbc, discord_user, poe_acc_name)
     await bot.get_channel(interaction.channel_id).send(response)
 
 
 @bot.tree.command(name='request-role', description='Get your veteran roles with this!')
-async def user_request_role(interaction: Interaction, poe_acc_name: str):
-    await interaction.response.send_message("Fetching your veteran role...")
-    discord_user = interaction.user
-    response = await process_role(dbc, discord_user, poe_acc_name)
+async def user_request_role(interaction: Interaction):
+    await interaction.response.send_message("Updating your veteran role...")
+    discord_user: discord.User = interaction.user
+    response: str = await process_role(dbc, discord_user)
     await bot.get_channel(interaction.channel_id).send(response)
 
 
 @bot.tree.command(name="unlink-account", description="WARNING: Veteran roles will be purged upon unlinking!")
 async def user_unlink_account(interaction: Interaction):
     await interaction.response.send_message('Attempting to sever the link between your Discord and PoE accounts...')
-    user = interaction.user
-    response = await unlink_account(dbc, user)
+    discord_user: discord.User = interaction.user
+    response: str = await unlink_account(dbc, discord_user)
     await bot.get_channel(interaction.channel_id).send(response)
 
 
