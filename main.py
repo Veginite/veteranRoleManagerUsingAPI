@@ -13,8 +13,10 @@ from discord import Message, Interaction
 from discord.ext import commands
 from dotenv import load_dotenv
 
-from process_league import process_league
 from db import run_db_query
+from process_league import process_league, illegitimize_league
+from process_role import process_role
+from account_linking import link_account, unlink_account
 
 load_dotenv()
 DISCORD_TOKEN: Final[str] = os.getenv("DISCORD_TOKEN")
@@ -31,34 +33,52 @@ dbc: Connection
 session: aiohttp.ClientSession
 
 
-# ------------- Commands -------------
+# ------------- Admin Commands -------------
 
-@bot.tree.command(name="addleague", description="Fetch league data from GGG API and merge it to the database")
-async def add_league(interaction: Interaction, league_name: str):
+
+@bot.tree.command(name="admin-illegitimize-league", description="Make a league not count towards vet roles")
+async def admin_illegitimize_league(interaction: Interaction, league_name: str):
+    await interaction.response.send_message(f'Making {league_name} ineligible for vet roles...')
+    await illegitimize_league(dbc, league_name)
+    await bot.get_channel(interaction.channel_id).send(f'{league_name} is now ineligible for vet roles.')
+
+
+@bot.tree.command(name="admin-process-league", description="Fetch league data from GGG API and merge it to the database")
+async def admin_process_league(interaction: Interaction, league_name: str):
     await interaction.response.send_message(f'Processing league {league_name}, please standby...')
     await process_league(league_name, dbc, session)
     await bot.get_channel(interaction.channel_id).send('Processing done!')
 
 
-
-
-@bot.tree.command(name="dbquery", description='You can run any database query with this')
-async def db_query(interaction: Interaction, query: str):
-    if await run_db_query(dbc, query, {}):
-        await interaction.response.send_message('Query executed')
-    else:
-        await interaction.response.send_message('Query failed to execute')
-
-
-@bot.tree.command(name='requestrank', description='Get your veteran roles with this!')
-async def request_rank(interaction: Interaction):
-    await interaction.response.send_message(f'Added rank to {interaction.user.mention}')
-
-
-@bot.tree.command(name='testcode', description='Code playground')
-async def test_code(interaction: Interaction):
+@bot.tree.command(name='admin-test-code', description='Code playground')
+async def admin_test_code(interaction: Interaction):
     await interaction.response.send_message('Testing code')
-    return
+
+# ------------- User Commands -------------
+
+
+@bot.tree.command(name="link-account", description="Establish a link between your Discord and PoE account")
+async def user_link_account(interaction: Interaction, poe_acc_name: str):
+    await interaction.response.send_message(f'Attempting to link you to {poe_acc_name}...')
+    discord_user = interaction.user
+    response = await link_account(dbc, discord_user, poe_acc_name)
+    await bot.get_channel(interaction.channel_id).send(response)
+
+
+@bot.tree.command(name='request-role', description='Get your veteran roles with this!')
+async def user_request_role(interaction: Interaction, poe_acc_name: str):
+    await interaction.response.send_message("Fetching your veteran role...")
+    discord_user = interaction.user
+    response = await process_role(dbc, discord_user, poe_acc_name)
+    await bot.get_channel(interaction.channel_id).send(response)
+
+
+@bot.tree.command(name="unlink-account", description="WARNING: Veteran roles will be purged upon unlinking!")
+async def user_unlink_account(interaction: Interaction):
+    await interaction.response.send_message('Attempting to sever the link between your Discord and PoE accounts...')
+    user = interaction.user
+    response = await unlink_account(dbc, user)
+    await bot.get_channel(interaction.channel_id).send(response)
 
 
 # ------------------------------------
@@ -98,9 +118,6 @@ async def on_message(message: Message) -> None:
     # The bot should not react to the message itself posts or there will be an infinite message loop
     if message.author == bot.user:
         return
-
-    else:
-        print('working')
 
 
 def main() -> None:
