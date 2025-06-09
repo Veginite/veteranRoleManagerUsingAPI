@@ -8,11 +8,11 @@ import aiohttp
 import json
 import time
 
-from db import run_db_query
+from db import run_db_query, run_many_db_queries
 
 
 async def process_league(league_name: str, dbc: Connection, session) -> bool:
-    account_entries: list = []
+    poe_account_entries: list = []
     character_entries: list = []
     # FOR TESTING WITH LOCALLY SOURCED DATA
     # with open('league_example.json', encoding='utf-8') as f:
@@ -26,9 +26,8 @@ async def process_league(league_name: str, dbc: Connection, session) -> bool:
     # If the league is brand new, add it to the database
     await process_league_entry(dbc, league_data["league"])
 
-    await process_ladder_entries(dbc,
-                                 league_data["ladder"]["entries"],
-                                 account_entries,
+    await process_ladder_entries(league_data["ladder"]["entries"],
+                                 poe_account_entries,
                                  character_entries,
                                  league_data["league"]["name"])
 
@@ -42,9 +41,8 @@ async def process_league(league_name: str, dbc: Connection, session) -> bool:
         offset = total_entries - remaining_entries
         league_data = await fetch_league_data(session, league_name, min(remaining_entries, 500), offset)
 
-        await process_ladder_entries(dbc,
-                                     league_data["ladder"]["entries"],
-                                     account_entries,
+        await process_ladder_entries(league_data["ladder"]["entries"],
+                                     poe_account_entries,
                                      character_entries,
                                      league_data["league"]["name"])
 
@@ -52,22 +50,25 @@ async def process_league(league_name: str, dbc: Connection, session) -> bool:
 
     # ------------------------
 
-    query = f'INSERT INTO account (username) VALUES (:username) ON CONFLICT(username) DO NOTHING;'
+    query = f'INSERT INTO poe_account (username) VALUES (:username) ON CONFLICT(username) DO NOTHING;'
 
-    await run_db_query(dbc, query, account_entries)
+    await run_many_db_queries(dbc, query, poe_account_entries)
 
     # ------------------------
 
-    subquery_owner = f'SELECT id FROM account WHERE username = :owner'  # FK surrogate key
+    subquery_owner = f'SELECT id FROM poe_account WHERE username = :owner'  # FK surrogate key
     subquery_league = f'SELECT id FROM league WHERE name = :league_name'  # FK surrogate key
 
     # sqlite3 UPSERT implementation
-    query = (f'INSERT INTO character (id, name, rank, class, level, experience, owner, league) '
-             f'VALUES(:id, :name, :rank, :class, :level, :experience, ({subquery_owner}), ({subquery_league})) '
+    query = (f'INSERT INTO character (id, name, rank, class, level, experience, delve_depth, owner, league) '
+             f'VALUES(:id, :name, :rank, :class, :level, :experience, :delve_depth, '
+             f'({subquery_owner}), ({subquery_league})) '
              f'ON CONFLICT(id) DO '
-             f'UPDATE SET name=:name, rank=:rank, class=:class, level=:level, experience=:experience WHERE id=:id;')
+             f'UPDATE SET '
+             f'name=:name, rank=:rank, class=:class, level=:level, experience=:experience, delve_depth=:delve_depth, '
+             f'WHERE id=:id;')
 
-    await run_db_query(dbc, query, character_entries)
+    await run_many_db_queries(dbc, query, character_entries)
 
     # ------------------------
 
@@ -89,12 +90,12 @@ async def fetch_league_data(session: aiohttp.ClientSession, league_name: str, li
             return None
 
 
-async def process_ladder_entries(dbc, ladder_entries, account_entries, character_entries, league_name):
+async def process_ladder_entries(ladder_entries, poe_account_entries, character_entries, league_name):
     for entry in ladder_entries:
         character = entry["character"]
 
         # New accounts need to be added before the characters because the foreign key is not allowed to be null
-        account_entries.append({'username': entry["account"]["name"]})
+        poe_account_entries.append({'username': entry["account"]["name"]})
 
         character_entries.append({
             'id': character["id"],
@@ -103,6 +104,7 @@ async def process_ladder_entries(dbc, ladder_entries, account_entries, character
             'class': character["class"],
             'level': int(character["level"]),
             'experience': int(character["experience"]),
+            'delve_depth': int(character["depth"]['default']) if 'depth' in character else None,
             'owner': entry["account"]["name"],
             'league_name': league_name})
 
@@ -110,11 +112,16 @@ async def process_ladder_entries(dbc, ladder_entries, account_entries, character
 async def process_league_entry(dbc, league_data):
     league_entry = {
         'league_name': league_data["name"],
-        'start_date': league_data["startAt"],
-        'end_date': league_data["endAt"]}
+        'start_at': league_data["startAt"],
+        'end_at': league_data["endAt"]}
 
-    query = (f'INSERT INTO league (name, start_date, end_date) '
-             f'VALUES (:league_name, :start_date, :end_date) '
-             f'ON CONFLICT(name) DO UPDATE SET start_date=:start_date, end_date=:end_date;')
+    query = (f'INSERT INTO league (name, start_at, end_at) '
+             f'VALUES (:league_name, :start_at, :end_at) '
+             f'ON CONFLICT(name) DO UPDATE SET start_at=:start_at, end_at=:end_at;')
 
     await run_db_query(dbc, query, league_entry)
+
+
+async def illegitimize_league(dbc: Connection, league_name: str):
+    query = "UPDATE league SET awards_veteran_roles = FALSE WHERE name = :league_name;"
+    await run_db_query(dbc, query, {'league_name': league_name})
