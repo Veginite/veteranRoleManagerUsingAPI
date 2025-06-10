@@ -46,8 +46,8 @@ async def admin_illegitimize_league(interaction: Interaction, league_name: str):
 @bot.tree.command(name="admin-process-league", description="Fetch league data from GGG API and merge it to the database")
 async def admin_process_league(interaction: Interaction, league_name: str):
     await interaction.response.send_message(f'Processing league {league_name}, please standby...')
-    await process_league(league_name, dbc, session)
-    await bot.get_channel(interaction.channel_id).send('Processing done!')
+    response = await process_league(league_name, dbc, session)
+    await bot.get_channel(interaction.channel_id).send(response)
 
 
 @bot.tree.command(name='admin-test-code', description='Code playground')
