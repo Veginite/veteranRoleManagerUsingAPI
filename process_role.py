@@ -1,6 +1,6 @@
 #########################################
 # Author: Veginite
-# Module status: SEMI-FINISHED
+# Module status: FINISHED
 #########################################
 
 from aiosqlite import Connection
