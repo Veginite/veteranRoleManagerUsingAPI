@@ -54,6 +54,7 @@ async def admin_process_league(interaction: Interaction, league_name: str):
 async def admin_test_code(interaction: Interaction):
     await interaction.response.send_message('Testing code')
 
+
 # ------------- User Commands -------------
 
 
@@ -81,7 +82,8 @@ async def user_unlink_account(interaction: Interaction):
     await bot.get_channel(interaction.channel_id).send(response)
 
 
-# ------------------------------------
+# -----------------------------------------
+
 
 @bot.event
 async def on_ready() -> None:
@@ -103,7 +105,6 @@ async def on_ready() -> None:
         print(e)
 
     # instantiate a client session for HTTP requests from the GGG API
-
     header = {
         'Authorization': f'Bearer {GGG_ACCESS_TOKEN}',
         'User-Agent': f'OAuth {GGG_CLIENT_ID}/1.0.0 (contact: {GGG_AUTHOR_CONTACT})'
