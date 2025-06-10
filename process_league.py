@@ -6,6 +6,7 @@
 from aiosqlite import Connection
 import aiohttp
 import json
+import time
 
 from db import run_db_query, run_many_db_queries
 from queries import insert_account_entries, insert_character_entries, insert_league_entry
@@ -17,13 +18,13 @@ async def process_league(league_name: str, dbc: Connection, session) -> str:
     character_entries: list = []
 
     # FOR TESTING WITH LOCALLY SOURCED JSON DATA
-    with open('league_example.json', encoding='utf-8') as f:
-        league_data = json.load(f)
+    # with open('league_example.json', encoding='utf-8') as f:
+        # league_data = json.load(f)
 
     # The Initial API request gives us information about how many ladder character entries the league has.
     # This allows us to precisely calculate the rest of the necessary API requests.
     # Grinding Gear Games has a hard limit of 500 entries per API request.
-    # league_data = await fetch_league_data(session, league_name, 500, 0)
+    league_data = await fetch_league_data(session, league_name, 500, 0)
 
     if league_data is None:
         return "Unable to fetch league data. Check console for HTTP status code. " + get_host_mention()
