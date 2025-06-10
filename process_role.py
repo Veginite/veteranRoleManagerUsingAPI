@@ -52,7 +52,6 @@ async def update_veteran_role(dbc: Connection, user: discord.User, unique_years_
     if eligible_role in user_vet_roles:
         return 'Skipped role processing: User already has the maximum eligible role.'
 
-    #
     await purge_prior_roles(user, user_vet_roles)
     await user.add_roles(user.guild.get_role(eligible_role))
     response_message = (f'For playing Conflux during {unique_years_played} years, '
