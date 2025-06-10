@@ -10,7 +10,8 @@ from aiosqlite import Connection
 import discord
 
 from queries import delete_discord_account, insert_discord_account, poe_account_exists, update_poe_account_link
-from queries import fetch_veteran_roles, get_linked_poe_username, sever_poe_account_link
+from queries import fetch_veteran_roles, get_linked_poe_username, get_linked_discord_account_username
+from queries import sever_poe_account_link
 from utils import purge_prior_roles, query_was_unsuccessful
 
 async def link_account(dbc: Connection, discord_user: discord.User, poe_acc_name: str):
@@ -18,6 +19,13 @@ async def link_account(dbc: Connection, discord_user: discord.User, poe_acc_name
     query_result = await poe_account_exists(dbc, poe_acc_name)
     if query_result["value"] is None or query_result["value"] is None:
         return query_result["query_error"]
+
+    # Check if the PoE username is already linked to a Discord account
+    query_result = await get_linked_discord_account_username(dbc, poe_acc_name)
+    if query_result is None or query_result["value"] is None:
+        return query_result["query_error"]
+    elif query_result["value"] is not None:
+        return f"Discord user {query_result["value"]} is linked to PoE account {poe_acc_name}."
 
     # Insert Discord account entry
     query_error = await insert_discord_account(dbc, discord_user)
@@ -33,15 +41,6 @@ async def link_account(dbc: Connection, discord_user: discord.User, poe_acc_name
         if query_was_unsuccessful(query_error_delete_account):
             return query_error_update_link + "\n" + query_error_delete_account
         # ----------------------------------------------------------
-
-        # -------- Find out what Discord user is linked to the PoE account --------
-        query_result = get_linked_discord_account_username(dbc, poe_acc_name)
-        if query_result["value"] is None or query_result["value"] is None:
-            return query_error_update_link + "\n" + query_result["query_error"]
-        else:
-            return (query_error_update_link + "\n" +
-                    f"Discord user {query_result["value"]} is linked to PoE account {poe_acc_name}.")
-        # -------------------------------------------------------------------------
 
     return f"PoE account {poe_acc_name} has been successfully linked to {discord_user.name}."
 
