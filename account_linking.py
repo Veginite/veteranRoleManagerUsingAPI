@@ -39,7 +39,7 @@ async def link_account(dbc: Connection, discord_user: discord.User, poe_acc_name
         if query_result["value"] is None or query_result["value"] is None:
             return query_error_update_link + "\n" + query_result["query_error"]
         else:
-            return (query_error_update_link +
+            return (query_error_update_link + "\n" +
                     f"Discord user {query_result["value"]} is linked to PoE account {poe_acc_name}.")
         # -------------------------------------------------------------------------
 
