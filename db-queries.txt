@@ -9,13 +9,12 @@ CREATE TABLE IF NOT EXISTS league(
 CREATE TABLE IF NOT EXISTS poe_account(
     id INTEGER PRIMARY KEY,
     username TEXT(64) UNIQUE,
-    discord_id INTEGER UNIQUE,
-    FOREIGN KEY(discord_id) REFERENCES discord_account(id)
+    discord_link INTEGER UNIQUE,
+    FOREIGN KEY(discord_link) REFERENCES discord_account(discord_id)
 );
 
 CREATE TABLE IF NOT EXISTS discord_account(
-    id INTEGER PRIMARY KEY,
-    discord_id INTEGER,
+    discord_id INTEGER PRIMARY KEY,
     username TEXT(64) UNIQUE,
     veteran_role INTEGER,
     FOREIGN KEY(veteran_role) REFERENCES veteran_role(id)
