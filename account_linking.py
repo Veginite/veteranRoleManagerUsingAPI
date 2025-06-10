@@ -14,6 +14,7 @@ from queries import fetch_veteran_roles, get_linked_poe_username, get_linked_dis
 from queries import sever_poe_account_link
 from utils import purge_prior_roles, query_was_unsuccessful
 
+
 async def link_account(dbc: Connection, discord_user: discord.User, poe_acc_name: str):
     # Verify that there is an entry of the PoE account in question
     query_result = await poe_account_exists(dbc, poe_acc_name)
@@ -40,7 +41,6 @@ async def link_account(dbc: Connection, discord_user: discord.User, poe_acc_name
         query_error_delete_account = await delete_discord_account(dbc, discord_user)
         if query_was_unsuccessful(query_error_delete_account):
             return query_error_update_link + "\n" + query_error_delete_account
-        # ----------------------------------------------------------
 
     return f"PoE account {poe_acc_name} has been successfully linked to {discord_user.name}."
 
