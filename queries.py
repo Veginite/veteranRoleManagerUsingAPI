@@ -122,10 +122,9 @@ async def insert_character_entries(dbc:Connection, character_entries: list) -> s
 
     query = (f'INSERT INTO character (id, name, rank, class, level, experience, delve_depth, owner, league) '
              f'VALUES(:id, :name, :rank, :class, :level, :experience, :delve_depth, '
-             f'({subquery_owner}), ({subquery_league}))'
-             f'ON CONFLICT(id) DO '
-             f'UPDATE SET '
-             f'name=:name, rank=:rank, class=:class, level=:level, experience=:experience, delve_depth=:delve_depth, '
+             f'({subquery_owner}), ({subquery_league})) '
+             f'ON CONFLICT(id) DO UPDATE SET '
+             f'name=:name, rank=:rank, class=:class, level=:level, experience=:experience, delve_depth=:delve_depth '
              f'WHERE id=:id;')
 
     query_response = await run_many_db_queries(dbc, query, character_entries)
