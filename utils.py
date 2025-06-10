@@ -4,12 +4,27 @@
 #########################################
 
 import discord
+from table2ascii import table2ascii as t2a, PresetStyle, Alignment
+
+
+def format_pretty_ascii_table(table: list) -> str:
+    header = ["Character", "Class", "Level", "League"]
+    output = t2a(
+        header=header,
+        body=table,
+        alignments=Alignment.LEFT,
+        style=PresetStyle.thin_compact_rounded
+    )
+    return f"```\n{output}\n```"
+
 
 def get_host_mention() -> str:
     return f'<@{str(243795149291782146)}> '
 
+
 def query_was_unsuccessful(query_error: str) -> bool:
     return len(query_error) > 0
+
 
 async def purge_prior_roles(discord_user: discord.User, user_veteran_roles: list) -> None:
     for role in user_veteran_roles:
