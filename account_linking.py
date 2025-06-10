@@ -1,7 +1,6 @@
 #########################################
 # Author: Veginite
-# Module status: SEMI-FINISHED
-# To do: Purge veteran roles upon unlinking account
+# Module status: FINISHED
 #########################################
 
 # Programmer's note: The reason the discord accounts are deleted upon unlinking (or an error)
@@ -10,93 +9,70 @@
 from aiosqlite import Connection
 import discord
 
-from db import run_db_query, get_generic_query_error_msg
-from utils import get_host_mention
+from queries import delete_discord_account, insert_discord_account, poe_account_exists, update_poe_account_link
+from queries import fetch_veteran_roles, get_linked_poe_username, sever_poe_account_link
+from utils import purge_prior_roles, query_was_unsuccessful
 
-async def link_account(dbc: Connection, user: discord.User, poe_acc_name: str):
-    discord_id = await insert_discord_account(dbc, user)
-    if discord_id is None:
-        return get_generic_query_error_msg()
-    elif not discord_id:
-        return "Process aborted: Discord user entry already exists. Please unlink your existing account first."
-    else:
-        discord_id = discord_id[0][0]
+async def link_account(dbc: Connection, discord_user: discord.User, poe_acc_name: str):
+    # Verify that there is an entry of the PoE account in question
+    query_result = await poe_account_exists(dbc, poe_acc_name)
+    if query_result["value"] is None or not query_result["value"]:
+        return query_result["query_error"]
 
+    # Insert Discord account entry
+    query_error = await insert_discord_account(dbc, discord_user)
+    if query_was_unsuccessful(query_error):
+        return query_error
 
-    params = {"discord_id": discord_id, "poe_acc_name": poe_acc_name}
-    query = ("UPDATE poe_account SET discord_link = :discord_id "
-             "WHERE poe_account.username = :poe_acc_name AND poe_account.discord_link IS NULL "
-             "RETURNING poe_account.discord_link;")
+    # Attempt to establish a link between the Discord user and the PoE account
+    query_error_update_link = await update_poe_account_link(dbc, discord_user, poe_acc_name)
+    if query_was_unsuccessful(query_error_update_link):
 
-    discord_link = await run_db_query(dbc, query, params)
+        # Delete the Discord account if the linking was unsuccessful
+        query_error_delete_account = await delete_discord_account(dbc, discord_user)
+        if query_was_unsuccessful(query_error_delete_account):
+            return query_error_update_link + "\n" + query_error_delete_account
+        # ----------------------------------------------------------
 
-    if discord_link is None or not discord_link: # If either fails, delete the inserted Discord account
-        discord_account_deletion = await delete_discord_account(dbc, discord_id)
-        if discord_account_deletion is None:
-            return get_generic_query_error_msg()
-        elif not discord_account_deletion:
-            return "Failed to delete redundant Discord account. " + get_host_mention()
-
-    if discord_link is None: # Query failed
-        return get_generic_query_error_msg()
-    elif not discord_link: # Empty list, meaning the 2-condition WHERE clause didn't match any rows
-        # There is a link. Find out who the account is linked to. If there is no link, there is no PoE account record
-        query = ("SELECT da.username FROM discord_account da "
-                 "INNER JOIN poe_account p ON p.discord_link = da.discord_id "
-                 "WHERE p.username = :poe_acc_name;")
-        discord_username = await run_db_query(dbc, query, {"poe_acc_name": poe_acc_name})
-
-        if discord_username is None:
-            return get_generic_query_error_msg()
-        elif not discord_username:
-            return f"There is no such PoE account {poe_acc_name} on record."
+        # -------- Find out what Discord user is linked to the PoE account --------
+        query_result = get_linked_discord_account_username(dbc, poe_acc_name)
+        if query_result["value"] is None or not query_result["value"]:
+            return query_error_update_link + "\n" + query_result["query_error"]
         else:
-            return f"PoE account {poe_acc_name} is already linked to {discord_username[0][0]}."
+            return (query_error_update_link +
+                    f"Discord user {query_result["value"]} is linked to PoE account {poe_acc_name}.")
+        # -------------------------------------------------------------------------
 
-    return f"PoE account {poe_acc_name} has been successfully linked to {user.name}."
-
-
-async def delete_discord_account(dbc: Connection, discord_id: int):
-    query = "DELETE FROM discord_account WHERE discord_id = :discord_id RETURNING discord_id;"
-    return await run_db_query(dbc, query, {"discord_id": discord_id})
+    return f"PoE account {poe_acc_name} has been successfully linked to {discord_user.name}."
 
 
-async def unlink_account(dbc: Connection, user: discord.User):
-    owner = await get_linked_discord_account(dbc, user.id)
-    if owner is None:
-        return get_generic_query_error_msg()
-    elif not owner:
-        return f"Process aborted: You are not linked to a PoE account."
+async def unlink_account(dbc: Connection, discord_user: discord.User):
+    # Check the link and return the name matching the Discord user's id
+    query_result = await get_linked_poe_username(dbc, discord_user)
+    if query_result["value"] is None:
+        return query_result["query_error"]
+    else:
+        poe_acc_name = query_result["value"]
 
-    sever_link = {'null_value': None, "discord_id": user.id}
-    query = ("UPDATE poe_account SET discord_link = :null_value "
-             "WHERE poe_account.discord_link = :discord_id RETURNING poe_account.username;")
-    poe_acc_name = await run_db_query(dbc, query, sever_link)
+    # Attempt to sever the link between the user and the PoE account
+    query_error = await sever_poe_account_link(dbc, discord_user)
+    if query_was_unsuccessful(query_error):
+        return query_error
 
-    if poe_acc_name is None:
-        return get_generic_query_error_msg()
-    elif not poe_acc_name:
-        return "Process aborted: Something went wrong with severing the foreign key. " + get_host_mention()
-    poe_acc_name = poe_acc_name[0][0]
+    # Attempt to delete the now redundant Discord account
+    query_error = await delete_discord_account(dbc, discord_user)
+    if query_was_unsuccessful(query_error):
+        return query_error
 
-    discord_account_deletion = await delete_discord_account(dbc, user.id)
-    if discord_account_deletion is None:
-        return get_generic_query_error_msg()
-    elif not discord_account_deletion:
-        return "Failed to delete redundant Discord account. " + get_host_mention()
+    # Purge user veteran roles
+    query_result = await fetch_veteran_roles(dbc)
+    if query_result["value"] is None or not query_result["value"]:
+        return query_result["query_error"]
+    else:
+        vet_roles = query_result["value"]
+
+    vet_roles = [row[0] for row in vet_roles]  # Fetch roles and construct a list of ids
+    user_vet_roles = [role.id for role in discord_user.roles if role.id in vet_roles]  # the vet roles the user currently has
+    await purge_prior_roles(discord_user, user_vet_roles)
 
     return f"Successfully unlinked {poe_acc_name}."
-
-
-async def insert_discord_account(dbc: Connection, user: discord.User):
-    account_details = {"discord_id": user.id, "username": user.name}
-    query = ("INSERT INTO discord_account (discord_id, username) "
-             "VALUES(:discord_id, :username) "
-             "ON CONFLICT (discord_id) DO NOTHING "
-             "RETURNING discord_id;")
-    return await run_db_query(dbc, query, account_details)
-
-
-async def get_linked_discord_account(dbc: Connection, discord_id: int):
-    query = "SELECT discord_link from poe_account WHERE poe_account.discord_link = :discord_id;"
-    return await run_db_query(dbc, query, {"discord_id": discord_id})
