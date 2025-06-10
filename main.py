@@ -10,13 +10,15 @@ from aiosqlite import Connection
 import aiohttp
 import discord
 from discord import Message, Interaction
-from discord.ext import commands
+from discord.ext import commands, tasks
 from dotenv import load_dotenv
 
 from db import run_db_query
 from process_league import process_league, illegitimize_league
 from process_role import process_role
 from account_linking import link_account, unlink_account
+from data_extraction import get_character_tables_from_username
+from utils import format_pretty_ascii_table
 
 load_dotenv()
 DISCORD_TOKEN: Final[str] = os.getenv("DISCORD_TOKEN")
@@ -32,8 +34,25 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 dbc: Connection
 session: aiohttp.ClientSession
 
+bot_spam_channel_id: int = 1221773773339099228
+current_private_league_name = "Mercenaries of Conflux (PL70922)"
+
 
 # ------------- Admin Commands -------------
+
+
+@bot.tree.command(name="admin-start-auto-update", description="Start the league auto update task")
+async def start_auto_update(interaction: Interaction):
+    # Start the auto-processing of the active league
+    await interaction.response.send_message('Task loop started.')
+    auto_process_league.start()
+
+
+@bot.tree.command(name="admin-stop-auto-update", description="Stop the league auto update task")
+async def stop_auto_update(interaction: Interaction):
+    # Stop the auto-processing of the active league
+    await interaction.response.send_message('Task loop stopped.')
+    auto_process_league.stop()
 
 
 @bot.tree.command(name="admin-illegitimize-league", description="Make a league not count towards vet roles")
@@ -56,6 +75,20 @@ async def admin_test_code(interaction: Interaction):
 
 
 # ------------- User Commands -------------
+
+
+@bot.tree.command(name='character-lookup', description='Provide a PoE account name to see what characters are tied to it')
+async def user_character_lookup(interaction: Interaction, poe_acc_name: str):
+    await interaction.response.send_message(f'Fetching characters from {poe_acc_name}...')
+    response: list | str = await get_character_tables_from_username(dbc, poe_acc_name)
+
+    if type(response) == str:
+        await bot.get_channel(interaction.channel_id).send(response)
+    else:
+        tables = response
+        for table in tables:
+            formatted_table = format_pretty_ascii_table(table)
+            await bot.get_channel(interaction.channel_id).send(formatted_table)
 
 
 @bot.tree.command(name="link-account", description="Establish a link between your Discord and PoE account")
@@ -119,6 +152,12 @@ async def on_message(message: Message) -> None:
     # The bot should not react to the message itself posts or there will be an infinite message loop
     if message.author == bot.user:
         return
+
+
+@tasks.loop(hours=3)
+async def auto_process_league():
+    response = await process_league(current_private_league_name, dbc, session)
+    await bot.get_channel(bot_spam_channel_id).send(response)
 
 
 def main() -> None:
