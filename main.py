@@ -1,6 +1,6 @@
 #########################################
 # Author: Veginite
-# Module status: UNFINISHED
+# Module status: FINISHED
 #########################################
 
 from typing import Final
