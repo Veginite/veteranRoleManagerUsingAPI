@@ -41,7 +41,7 @@ async def update_veteran_role(dbc: Connection, user: discord.User, unique_years_
     vet_roles = [row[0] for row in vet_roles] # Fetch roles and construct a list of ids
     user_vet_roles = [role.id for role in user.roles if role.id in vet_roles] # the vet roles the user currently has
 
-    # Fetch the eligible veteran role id
+    # Fetch the eligible veteran role's id
     matched_role_required_year = min(len(vet_roles), unique_years_played)
     query_result = await fetch_eligible_role(dbc, matched_role_required_year) # [0][1] is role id in db
     if query_result is None or query_result["value"] is None:
