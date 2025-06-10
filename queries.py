@@ -104,6 +104,39 @@ async def get_linked_discord_account_username(dbc: Connection, poe_acc_name: str
     return result
 
 
+async def insert_account_entries(dbc: Connection, account_entries: list) -> str:
+    query = f'INSERT INTO poe_account (username) VALUES (:username) ON CONFLICT(username) DO NOTHING;'
+
+    query_response = await run_many_db_queries(dbc, query, account_entries)
+
+    query_error = ""
+    if query_response is None:
+        query_error = get_generic_query_error_msg() + insert_account_entries.__name__
+
+    return query_error
+
+
+async def insert_character_entries(dbc:Connection, character_entries: list) -> str:
+    subquery_owner = f'SELECT id FROM poe_account WHERE username = :owner'  # FK surrogate key
+    subquery_league = f'SELECT id FROM league WHERE name = :league_name'  # FK surrogate key
+
+    query = (f'INSERT INTO character (id, name, rank, class, level, experience, delve_depth, owner, league) '
+             f'VALUES(:id, :name, :rank, :class, :level, :experience, :delve_depth, '
+             f'({subquery_owner}), ({subquery_league}))'
+             f'ON CONFLICT(id) DO '
+             f'UPDATE SET '
+             f'name=:name, rank=:rank, class=:class, level=:level, experience=:experience, delve_depth=:delve_depth, '
+             f'WHERE id=:id;')
+
+    query_response = await run_many_db_queries(dbc, query, character_entries)
+
+    query_error = ""
+    if query_response is None:
+        query_error = get_generic_query_error_msg() + insert_character_entries.__name__
+
+    return query_error
+
+
 async def insert_discord_account(dbc: Connection, discord_user: discord.User) -> str:
     account_details = {"discord_id": discord_user.id, "username": discord_user.name}
     query = "INSERT INTO discord_account (discord_id, username) VALUES(:discord_id, :username);"
@@ -112,6 +145,36 @@ async def insert_discord_account(dbc: Connection, discord_user: discord.User) ->
     query_error = ""
     if query_response is None:
         query_error = f"User '{discord_user.name}' already has a PoE account linked."
+
+    return query_error
+
+
+async def insert_league_entry(dbc, league_data) -> str:
+    league_entry = {
+        'league_name': league_data["name"],
+        'start_at': league_data["startAt"],
+        'end_at': league_data["endAt"]}
+
+    query = (f'INSERT INTO league (name, start_at, end_at) '
+             f'VALUES (:league_name, :start_at, :end_at) '
+             f'ON CONFLICT(name) DO UPDATE SET start_at=:start_at, end_at=:end_at;')
+
+    query_response = await run_db_query(dbc, query, league_entry)
+
+    query_error = ""
+    if query_response is None:
+        query_error = get_generic_query_error_msg() + insert_league_entry.__name__
+
+    return query_error
+
+
+async def update_league_no_roles(dbc: Connection, league_name: str) -> str:
+    query = "UPDATE league SET awards_veteran_roles = FALSE WHERE name = :league_name;"
+    query_response = await run_db_query(dbc, query, {'league_name': league_name})
+
+    query_error = ""
+    if query_response is None:
+        query_error = get_generic_query_error_msg() + update_league_no_roles.__name__
 
     return query_error
 
