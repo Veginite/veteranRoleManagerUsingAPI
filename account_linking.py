@@ -16,7 +16,7 @@ from utils import purge_prior_roles, query_was_unsuccessful
 async def link_account(dbc: Connection, discord_user: discord.User, poe_acc_name: str):
     # Verify that there is an entry of the PoE account in question
     query_result = await poe_account_exists(dbc, poe_acc_name)
-    if query_result["value"] is None or not query_result["value"]:
+    if query_result["value"] is None or query_result["value"] is None:
         return query_result["query_error"]
 
     # Insert Discord account entry
@@ -36,7 +36,7 @@ async def link_account(dbc: Connection, discord_user: discord.User, poe_acc_name
 
         # -------- Find out what Discord user is linked to the PoE account --------
         query_result = get_linked_discord_account_username(dbc, poe_acc_name)
-        if query_result["value"] is None or not query_result["value"]:
+        if query_result["value"] is None or query_result["value"] is None:
             return query_error_update_link + "\n" + query_result["query_error"]
         else:
             return (query_error_update_link +
@@ -66,7 +66,7 @@ async def unlink_account(dbc: Connection, discord_user: discord.User):
 
     # Purge user veteran roles
     query_result = await fetch_veteran_roles(dbc)
-    if query_result["value"] is None or not query_result["value"]:
+    if query_result["value"] is None or query_result["value"] is None:
         return query_result["query_error"]
     else:
         vet_roles = query_result["value"]
