@@ -21,9 +21,9 @@ async def delete_discord_account(dbc: Connection, discord_user: discord.User) ->
     return query_error
 
 
-async def fetch_eligible_role(dbc: Connection, unique_years_played: int) -> dict:
-    query = "SELECT name, discord_role_id FROM veteran_role WHERE required_years = :unique_years_played;"
-    eligible_role = await run_db_query(dbc, query, {'unique_years_played': unique_years_played})
+async def fetch_eligible_role(dbc: Connection, matched_role_required_year: int) -> dict:
+    query = "SELECT name, discord_role_id FROM veteran_role WHERE required_years = :matched_role_required_year;"
+    eligible_role = await run_db_query(dbc, query, {'matched_role_required_year': matched_role_required_year})
 
     result = {"value": None, "query_error": ""}
     if eligible_role is None: # Query error
@@ -167,17 +167,6 @@ async def insert_league_entry(dbc, league_data) -> str:
     return query_error
 
 
-async def update_league_no_roles(dbc: Connection, league_name: str) -> str:
-    query = "UPDATE league SET awards_veteran_roles = FALSE WHERE name = :league_name;"
-    query_response = await run_db_query(dbc, query, {'league_name': league_name})
-
-    query_error = ""
-    if query_response is None:
-        query_error = get_generic_query_error_msg() + update_league_no_roles.__name__
-
-    return query_error
-
-
 async def poe_account_exists(dbc: Connection, poe_acc_name: str) -> dict:
     query = "SELECT id FROM poe_account WHERE username = :poe_acc_name;"
     query_response = await run_db_query(dbc, query, {"poe_acc_name": poe_acc_name})
@@ -203,6 +192,29 @@ async def sever_poe_account_link(dbc: Connection, user: discord.User) -> str:
     if query_response is None:
         # Should never fail as redundant Discord accounts are removed during processing
         query_error = "Unable to sever PoE account link. " + get_host_mention()
+
+    return query_error
+
+
+async def update_discord_account_vet_role(dbc: Connection, discord_user: discord.User, role_id: int):
+    param = {'discord_id': discord_user.id, 'role_id': role_id}
+    query = "UPDATE discord_account SET veteran_role = :role_id WHERE discord_id = :discord_id;"
+    query_response = await run_db_query(dbc, query, param)
+
+    query_error = ""
+    if query_response is None:
+        query_error = get_generic_query_error_msg() + update_league_no_roles.__name__
+
+    return query_error
+
+
+async def update_league_no_roles(dbc: Connection, league_name: str) -> str:
+    query = "UPDATE league SET awards_veteran_roles = FALSE WHERE name = :league_name;"
+    query_response = await run_db_query(dbc, query, {'league_name': league_name})
+
+    query_error = ""
+    if query_response is None:
+        query_error = get_generic_query_error_msg() + update_league_no_roles.__name__
 
     return query_error
 
