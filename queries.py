@@ -1,6 +1,6 @@
 #########################################
 # Author: Veginite
-# Module status: SEMI-FINISHED
+# Module status: FINISHED
 #########################################
 
 from aiosqlite import Connection
@@ -116,7 +116,6 @@ async def insert_discord_account(dbc: Connection, discord_user: discord.User) ->
     return query_error
 
 
-
 async def poe_account_exists(dbc: Connection, poe_acc_name: str) -> dict:
     query = "SELECT id FROM poe_account WHERE username = :poe_acc_name;"
     query_response = await run_db_query(dbc, query, {"poe_acc_name": poe_acc_name})
@@ -130,7 +129,6 @@ async def poe_account_exists(dbc: Connection, poe_acc_name: str) -> dict:
         result["value"] = query_response[0][0]
 
     return result
-
 
 
 async def sever_poe_account_link(dbc: Connection, user: discord.User) -> str:
