@@ -3,8 +3,8 @@
 # Module status: FINISHED
 #########################################
 
-# Programmer note: both run_db_query and run_many_db_queries always returns a list of
-# at least one Tuple, or None if the query failed to execute.
+# Programmer note: both run_db_query and run_many_db_queries always returns a list (empty or with tuples)
+# or None if the query failed to execute.
 
 from aiosqlite import Connection, Error
 
