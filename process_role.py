@@ -15,14 +15,14 @@ async def process_role(dbc: Connection, user: discord.User) -> str:
 
     # Check if there is a PoE account linked to the Discord user
     query_result = await get_linked_poe_username(dbc, user)
-    if query_result is None or query_result["value"] is None:
+    if query_result is None or not query_result["value"]:
         return query_result["query_error"]
     else:
         poe_acc_name = query_result["value"]
 
     # Fetch the distinct amount of start_at years the given user has on record
     query_result = await fetch_unique_years_played(dbc, poe_acc_name)
-    if query_result is None or query_result["value"] is None:
+    if query_result is None or not query_result["value"]:
         return query_result["query_error"]
     else:
         unique_years_played = query_result["value"]
@@ -33,7 +33,7 @@ async def process_role(dbc: Connection, user: discord.User) -> str:
 async def update_veteran_role(dbc: Connection, user: discord.User, unique_years_played: int) -> str:
     # Fetch the veteran role IDs from the database
     query_result = await fetch_veteran_roles(dbc)
-    if query_result is None or query_result["value"] is None:
+    if query_result is None or not query_result["value"]:
         return query_result["query_error"]
     else:
         vet_roles = query_result["value"]
@@ -44,7 +44,7 @@ async def update_veteran_role(dbc: Connection, user: discord.User, unique_years_
     # Fetch the eligible veteran role's id
     matched_role_required_year = min(len(vet_roles), unique_years_played)
     query_result = await fetch_eligible_role(dbc, matched_role_required_year) # [0][1] is role id in db
-    if query_result is None or query_result["value"] is None:
+    if query_result is None or not query_result["value"]:
         return query_result["query_error"]
     else:
         eligible_role = query_result["value"]

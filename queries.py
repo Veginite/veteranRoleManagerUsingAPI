@@ -21,17 +21,38 @@ async def delete_discord_account(dbc: Connection, discord_user: discord.User) ->
     return query_error
 
 
-async def fetch_eligible_role(dbc: Connection, matched_role_required_year: int) -> dict:
-    query = "SELECT name, discord_role_id FROM veteran_role WHERE required_years = :matched_role_required_year;"
-    eligible_role = await run_db_query(dbc, query, {'matched_role_required_year': matched_role_required_year})
+# Low level characters are not interesting, and they will bloat the 2000-character limit Discord has.
+async def fetch_characters_from_username(dbc: Connection, poe_acc_name: str):
+    query = ("SELECT c.name, c.class, c.level, l.name FROM character c "
+             "INNER JOIN poe_account p ON p.id = c.owner "
+             "INNER JOIN league l ON l.id = c.league "
+             "WHERE p.username = :username AND c.level > 68;")
+    query_response = await run_db_query(dbc, query, {"username": poe_acc_name})
 
     result = {"value": None, "query_error": ""}
-    if eligible_role is None: # Query error
+    if query_response is None:  # Query error
         result["query_error"] = get_generic_query_error_msg()
-    elif not eligible_role:  # Empty list
+    elif not query_response:  # Empty list
+        result["value"] = query_response
+        result["query_error"] = f"Sorry, could not find any characters for {poe_acc_name}."
+    else:
+        result["value"] = query_response
+
+    return result
+
+
+async def fetch_eligible_role(dbc: Connection, matched_role_required_year: int) -> dict:
+    query = "SELECT name, discord_role_id FROM veteran_role WHERE required_years = :matched_role_required_year;"
+    query_response = await run_db_query(dbc, query, {'matched_role_required_year': matched_role_required_year})
+
+    result = {"value": None, "query_error": ""}
+    if query_response is None: # Query error
+        result["query_error"] = get_generic_query_error_msg()
+    elif not query_response:  # Empty list
+        result["value"] = query_response
         result["query_error"] = "Process aborted: Query returned no eligible roles. " + get_host_mention()
     else:
-        result["value"] = eligible_role[0][1]
+        result["value"] = query_response[0][1]
 
     return result
 
@@ -48,6 +69,7 @@ async def fetch_unique_years_played(dbc: Connection, poe_acc_name: str) -> dict:
     if unique_years_played is None:  # Query error
         result["query_error"] = get_generic_query_error_msg()
     elif not unique_years_played:  # Empty list
+        result["value"] = query_response
         result["query_error"] = (f'Process aborted: Query returned no Conflux records for PoE account {poe_acc_name}.'
                 f'If you are new to Conflux and have recently joined your first league, please await a database update.')
     else:
@@ -65,6 +87,7 @@ async def fetch_veteran_roles(dbc: Connection) -> dict:
     if query_response is None: # Query error
         result["query_error"] = get_generic_query_error_msg()
     elif not query_response: # Empty list
+        result["value"] = query_response
         result["query_error"] = "Process aborted: Query returned no veteran roles. " + get_host_mention()
     else:
         result["value"] = query_response
@@ -80,6 +103,7 @@ async def get_linked_poe_username(dbc: Connection, discord_user: discord.User) -
     if query_response is None:
         result["query_error"] = get_generic_query_error_msg() + get_linked_poe_username.__name__
     elif not query_response:
+        result["value"] = query_response
         result["query_error"] = "There is no PoE account linked to you."
     else:
         result["value"] = query_response[0][0]
@@ -97,7 +121,8 @@ async def get_linked_discord_account_username(dbc: Connection, poe_acc_name: str
     if query_response is None:
         result["query_error"] = get_generic_query_error_msg() + get_linked_discord_account_username.__name__
     elif not query_response:
-        result["query_error"] = f"There is no PoE account with link id: {discord_link} " + get_host_mention()
+        result["value"] = query_response
+        result["query_error"] = f"There is no link between this account and {poe_acc_name}."
     else:
         result["value"] = query_response[0][0]
 
@@ -175,6 +200,7 @@ async def poe_account_exists(dbc: Connection, poe_acc_name: str) -> dict:
     if query_response is None:
         result["query_error"] = get_generic_query_error_msg() + get_linked_discord_account_username.__name__
     elif not query_response:
+        result["value"] = query_response
         result["query_error"] = f"PoE account: {poe_acc_name} returned no results. "
     else:
         result["value"] = query_response[0][0]

@@ -18,14 +18,16 @@ from utils import purge_prior_roles, query_was_unsuccessful
 async def link_account(dbc: Connection, discord_user: discord.User, poe_acc_name: str):
     # Verify that there is an entry of the PoE account in question
     query_result = await poe_account_exists(dbc, poe_acc_name)
-    if query_result["value"] is None or query_result["value"] is None:
+    if query_result is None or not query_result["value"]:
         return query_result["query_error"]
 
     # Check if the PoE username is already linked to a Discord account
     query_result = await get_linked_discord_account_username(dbc, poe_acc_name)
-    if query_result is None or query_result["value"] is None:
+    if query_result is None:
         return query_result["query_error"]
-    elif query_result["value"] is not None:
+    elif not query_result["value"]:
+        pass # there is no link for this PoE account, ok to continue
+    else:
         return f"Discord user '{query_result["value"]}' is already linked to PoE account {poe_acc_name}."
 
     # Insert Discord account entry
@@ -48,7 +50,7 @@ async def link_account(dbc: Connection, discord_user: discord.User, poe_acc_name
 async def unlink_account(dbc: Connection, discord_user: discord.User):
     # Check the link and return the name matching the Discord user's id
     query_result = await get_linked_poe_username(dbc, discord_user)
-    if query_result["value"] is None:
+    if query_result is None or not query_result["value"]:
         return query_result["query_error"]
     else:
         poe_acc_name = query_result["value"]
@@ -65,7 +67,7 @@ async def unlink_account(dbc: Connection, discord_user: discord.User):
 
     # Purge user veteran roles
     query_result = await fetch_veteran_roles(dbc)
-    if query_result["value"] is None or query_result["value"] is None:
+    if query_result is None or not query_result["value"]:
         return query_result["query_error"]
     else:
         vet_roles = query_result["value"]
