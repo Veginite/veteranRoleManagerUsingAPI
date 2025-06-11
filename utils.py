@@ -7,8 +7,7 @@ import discord
 from table2ascii import table2ascii as t2a, PresetStyle, Alignment
 
 
-def format_pretty_ascii_table(table: list) -> str:
-    header = ["Character", "Class", "Level", "League"]
+def format_pretty_ascii_table(table: list, header: list) -> str:
     output = t2a(
         header=header,
         body=table,

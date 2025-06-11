@@ -87,7 +87,8 @@ async def user_character_lookup(interaction: Interaction, poe_acc_name: str):
     else:
         tables = response
         for table in tables:
-            formatted_table = format_pretty_ascii_table(table)
+            header = ["Character", "Class", "Level", "League"]
+            formatted_table = format_pretty_ascii_table(table, header)
             await bot.get_channel(interaction.channel_id).send(formatted_table)
 
 
