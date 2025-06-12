@@ -16,7 +16,7 @@ async def delete_discord_account(dbc: Connection, discord_user: discord.User) ->
 
     query_error = ""
     if query_response is None:
-        query_error = "Unable to remove Discord account from db. " + get_host_mention()
+        query_error = "Critical error: Unable to remove Discord account from db. " + get_host_mention()
 
     return query_error
 
@@ -31,10 +31,10 @@ async def fetch_characters_from_username(dbc: Connection, poe_acc_name: str):
 
     result = {"value": None, "query_error": ""}
     if query_response is None:  # Query error
-        result["query_error"] = get_generic_query_error_msg()
+        result["query_error"] = get_generic_query_error_msg() + fetch_characters_from_username.__name__
     elif not query_response:  # Empty list
         result["value"] = query_response
-        result["query_error"] = f"Sorry, could not find any characters for {poe_acc_name}."
+        result["query_error"] = f"Sorry, could not find any characters for PoE account: {poe_acc_name}."
     else:
         result["value"] = query_response
 
@@ -47,7 +47,7 @@ async def fetch_eligible_role(dbc: Connection, matched_role_required_year: int) 
 
     result = {"value": None, "query_error": ""}
     if query_response is None: # Query error
-        result["query_error"] = get_generic_query_error_msg()
+        result["query_error"] = get_generic_query_error_msg() + fetch_eligible_role.__name__
     elif not query_response:  # Empty list
         result["value"] = query_response
         result["query_error"] = "Process aborted: Query returned no eligible roles. " + get_host_mention()
@@ -67,10 +67,10 @@ async def fetch_unique_years_played(dbc: Connection, poe_acc_name: str) -> dict:
 
     result = {"value": None, "query_error": ""}
     if unique_years_played is None:  # Query error
-        result["query_error"] = get_generic_query_error_msg()
+        result["query_error"] = get_generic_query_error_msg() + fetch_unique_years_played.__name__
     elif not unique_years_played:  # Empty list
         result["value"] = query_response
-        result["query_error"] = (f'Process aborted: Query returned no Conflux records for PoE account {poe_acc_name}.'
+        result["query_error"] = (f'Query returned no Conflux records for PoE account {poe_acc_name}.'
                 f'If you are new to Conflux and have recently joined your first league, please await a database update.')
     else:
         result["value"] = unique_years_played[0][0]
@@ -85,10 +85,10 @@ async def fetch_veteran_roles(dbc: Connection) -> dict:
 
     result = {"value": None, "query_error": ""}
     if query_response is None: # Query error
-        result["query_error"] = get_generic_query_error_msg()
+        result["query_error"] = get_generic_query_error_msg() + fetch_veteran_roles.__name__
     elif not query_response: # Empty list
         result["value"] = query_response
-        result["query_error"] = "Process aborted: Query returned no veteran roles. " + get_host_mention()
+        result["query_error"] = "Critical data missing: Query returned no veteran roles. " + get_host_mention()
     else:
         result["value"] = query_response
 
@@ -104,7 +104,7 @@ async def get_linked_poe_username(dbc: Connection, discord_user: discord.User) -
         result["query_error"] = get_generic_query_error_msg() + get_linked_poe_username.__name__
     elif not query_response:
         result["value"] = query_response
-        result["query_error"] = "There is no PoE account linked to you."
+        result["query_error"] = "There is no PoE account linked to you. Please use /link-account first!"
     else:
         result["value"] = query_response[0][0]
 
@@ -217,7 +217,7 @@ async def sever_poe_account_link(dbc: Connection, user: discord.User) -> str:
     query_error = ""
     if query_response is None:
         # Should never fail as redundant Discord accounts are removed during processing
-        query_error = "Unable to sever PoE account link. " + get_host_mention()
+        query_error = "Critical error: Unable to sever PoE account link. " + get_host_mention()
 
     return query_error
 
@@ -253,6 +253,6 @@ async def update_poe_account_link(dbc: Connection, discord_user: discord.User, p
 
     query_error = ""
     if query_response is None:
-        query_error = "Unable to establish PoE account link. " + get_host_mention()
+        query_error = "Critical error: Unable to establish PoE account link. " + get_host_mention()
 
     return query_error
