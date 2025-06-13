@@ -8,7 +8,7 @@ import discord
 import datetime
 
 from queries import fetch_eligible_role, fetch_veteran_roles, fetch_unique_years_played, get_linked_poe_username
-from queries import fetch_latest_league_year, update_discord_account_vet_role
+from queries import update_discord_account_vet_role
 from utils import purge_prior_roles, query_was_unsuccessful
 
 
