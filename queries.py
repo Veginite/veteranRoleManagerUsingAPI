@@ -58,28 +58,28 @@ async def fetch_eligible_role(dbc: Connection, matched_role_required_year: int) 
 
 
 async def fetch_unique_years_played(dbc: Connection, poe_acc_name: str) -> dict:
-    query = (f"SELECT COUNT(DISTINCT strftime('%Y', l.start_at)) FROM character "
+    query = (f"SELECT DISTINCT strftime('%Y', l.start_at) FROM character "
              f"INNER JOIN poe_account a ON a.id = character.owner "
              f"INNER JOIN league l ON l.id = character.league "
              f"WHERE a.username = :username AND l.awards_veteran_roles = TRUE;")
 
-    unique_years_played = await run_db_query(dbc, query, {'username': poe_acc_name})
+    query_response = await run_db_query(dbc, query, {'username': poe_acc_name})
 
     result = {"value": None, "query_error": ""}
-    if unique_years_played is None:  # Query error
+    if query_response is None:  # Query error
         result["query_error"] = get_generic_query_error_msg() + fetch_unique_years_played.__name__
-    elif not unique_years_played:  # Empty list
+    elif not query_response:  # Empty list
         result["value"] = query_response
         result["query_error"] = (f'Query returned no Conflux records for PoE account {poe_acc_name}.'
                 f'If you are new to Conflux and have recently joined your first league, please await a database update.')
     else:
-        result["value"] = unique_years_played[0][0]
+        result["value"] = query_response
 
     return result
 
 
 async def fetch_veteran_roles(dbc: Connection) -> dict:
-    query = f"SELECT discord_role_id FROM veteran_role;"
+    query = f"SELECT discord_role_id, required_years FROM veteran_role;"
 
     query_response = await run_db_query(dbc, query, {})
 
