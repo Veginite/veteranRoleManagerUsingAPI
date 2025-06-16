@@ -44,7 +44,8 @@ async def link_account(dbc: Connection, discord_user: discord.User, poe_acc_name
         if query_was_unsuccessful(query_error_delete_account):
             return query_error_update_link + "\n" + query_error_delete_account
 
-    return f"PoE account {poe_acc_name} has been successfully linked to {discord_user.name}."
+    return (f"PoE account {poe_acc_name} has been successfully linked to {discord_user.name}. "
+            f"Use /request-role to get fancy colors!")
 
 
 async def unlink_account(dbc: Connection, discord_user: discord.User):
