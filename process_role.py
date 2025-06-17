@@ -9,7 +9,7 @@ import datetime
 
 from queries import fetch_eligible_role, fetch_veteran_roles, fetch_unique_years_played, get_linked_poe_username
 from queries import update_discord_account_vet_role
-from utils import purge_prior_roles, query_was_unsuccessful
+from utils import purge_roles, query_was_unsuccessful
 
 
 async def process_role(dbc: Connection, user: discord.User) -> str:
@@ -59,7 +59,7 @@ async def update_veteran_role(dbc: Connection, user: discord.User, unique_years_
         return (f"You will be eligible for <@&{next_eligible_role["id"]}> swag once you have "
                 f"made a character in any {next_eligible_year} ladder!")
 
-    await purge_prior_roles(user, user_vet_role_ids)
+    await purge_roles(user, user_vet_role_ids)
     await user.add_roles(user.guild.get_role(eligible_role["id"]))
     response_message = (f'For playing Conflux during {len(unique_years_played)} years, '
                                 f'<@{str(user.id)}> has been awarded the following: ')

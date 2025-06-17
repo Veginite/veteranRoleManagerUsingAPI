@@ -12,7 +12,7 @@ import discord
 from queries import delete_discord_account, insert_discord_account, poe_account_exists, update_poe_account_link
 from queries import fetch_veteran_roles, get_linked_poe_username, get_linked_discord_account_username
 from queries import sever_poe_account_link
-from utils import purge_prior_roles, query_was_unsuccessful
+from utils import purge_roles, query_was_unsuccessful
 
 
 async def link_account(dbc: Connection, discord_user: discord.User, poe_acc_name: str):
@@ -75,6 +75,6 @@ async def unlink_account(dbc: Connection, discord_user: discord.User):
 
     vet_roles = [row[0] for row in vet_roles]  # Fetch roles and construct a list of ids
     user_vet_roles = [role.id for role in discord_user.roles if role.id in vet_roles]  # the vet roles the user currently has
-    await purge_prior_roles(discord_user, user_vet_roles)
+    await purge_roles(discord_user, user_vet_roles)
 
     return f"Successfully unlinked {poe_acc_name}."
