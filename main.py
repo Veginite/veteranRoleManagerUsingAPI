@@ -36,6 +36,7 @@ session: aiohttp.ClientSession
 
 bot_spam_channel_id: int = 1221773773339099228
 current_private_league_name = "Mercenaries of Conflux (PL70922)"
+posting_interval_seconds: int = 3600*2 # 2 hours
 
 
 # ------------- Admin Commands -------------
@@ -155,10 +156,10 @@ async def on_message(message: Message) -> None:
         return
 
 
-@tasks.loop(hours=3)
+@tasks.loop(seconds=posting_interval_seconds)
 async def auto_process_league():
     response = await process_league(current_private_league_name, dbc, session)
-    await bot.get_channel(bot_spam_channel_id).send(response)
+    await bot.get_channel(bot_spam_channel_id).send(content=response, silent=True, delete_after=posting_interval_seconds)
 
 
 def main() -> None:
