@@ -28,7 +28,7 @@ async def link_account(dbc: Connection, discord_user: discord.User, poe_acc_name
     elif not query_result["value"]:
         pass # there is no link for this PoE account, ok to continue
     else:
-        return f"Discord user '{query_result["value"]}' is already linked to PoE account {poe_acc_name}."
+        return f'Discord user {query_result["value"]} is already linked to PoE account {poe_acc_name}.'
 
     # Insert Discord account entry
     query_error = await insert_discord_account(dbc, discord_user)

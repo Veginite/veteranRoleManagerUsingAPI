@@ -50,19 +50,19 @@ async def update_veteran_role(dbc: Connection, user: discord.User, unique_years_
     matched_role_required_year: int = min(len(vet_roles), unique_amount_of_years_played)
     eligible_role: dict = next(role for role in vet_roles if role["req_years"] is matched_role_required_year)
     if matched_role_required_year == len(vet_roles):
-        return f"The only thing beyond <@&{eligible_role["id"]}> is NON-EXISTENCE"
+        return f'The only thing beyond <@&{eligible_role["id"]}> is NON-EXISTENCE'
     elif eligible_role["id"] in user_vet_role_ids:
         current_year = datetime.datetime.now().year
         next_eligible_role: dict = next(role for role in vet_roles if role["req_years"] is matched_role_required_year+1)
         next_eligible_year = current_year if not current_year in unique_years_played else current_year + 1
 
-        return (f"You will be eligible for <@&{next_eligible_role["id"]}> swag once you have "
-                f"made a character in any {next_eligible_year} ladder!")
+        return (f'You will be eligible for <@&{next_eligible_role["id"]}> swag once you have '
+                f'made a character in any {next_eligible_year} ladder!')
 
     await purge_roles(user, user_vet_role_ids)
     await user.add_roles(user.guild.get_role(eligible_role["id"]))
     response_message = (f'For playing Conflux during {len(unique_years_played)} years, '
-                                f'<@{str(user.id)}> has been awarded the following: ')
+                                f'<@{str(user.id)}> is now part of team: ')
     response_message += f'<@&{eligible_role["id"]}>'
 
     # Update the Discord account's vet role
