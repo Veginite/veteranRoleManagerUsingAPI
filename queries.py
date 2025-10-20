@@ -26,7 +26,7 @@ async def fetch_characters_from_username(dbc: Connection, poe_acc_name: str):
     query = ("SELECT c.name, c.class, c.level, l.name FROM character c "
              "INNER JOIN poe_account p ON p.id = c.owner "
              "INNER JOIN league l ON l.id = c.league "
-             "WHERE p.username = :username AND c.level > 68;")
+             "WHERE p.username = :poe_acc_name AND c.level > 68;")
     query_response = await run_db_query(dbc, query, {"username": poe_acc_name})
 
     result = {"value": None, "query_error": ""}
