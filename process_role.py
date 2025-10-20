@@ -61,7 +61,8 @@ async def update_veteran_role(dbc: Connection, user: discord.User, unique_years_
 
     await purge_roles(user, user_vet_role_ids)
     await user.add_roles(user.guild.get_role(eligible_role["id"]))
-    response_message = (f'For playing Conflux during {len(unique_years_played)} years, '
+    response_message = (f'For playing Conflux during {len(unique_years_played)} year'
+                                f'{"s" if len(unique_years_played) > 1 else ""}, '
                                 f'<@{str(user.id)}> is now part of team: ')
     response_message += f'<@&{eligible_role["id"]}>'
 
